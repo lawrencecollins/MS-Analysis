@@ -92,14 +92,14 @@ for i in rt_range:
 np_profile_mz = np.array(spec_vals['profile_mz'])
 np_profile_int = np.array(spec_vals['profile_int'])
 
-np_line_mz = np.array(spec_vals['line_mz'])
-np_line_int = np.array(spec_vals['line_int'])
+# np_line_mz = np.array(spec_vals['line_mz'])
+# np_line_int = np.array(spec_vals['line_int'])
 
 # take average of arrays 
 mean_profile_mz = np.average(np_profile_mz, axis = 0)
 mean_profile_int = np.average(np_profile_int, axis = 0)
-mean_line_mz = np.average(np_profile_mz, axis = 0)
-mean_line_int = np.average(np_profile_mz, axis = 0)
+# mean_line_mz = np.average(np_profile_mz, axis = 0)
+# mean_line_int = np.average(np_profile_mz, axis = 0)
 
 plt.figure(dpi = 120)
 # plot profile spectrum
