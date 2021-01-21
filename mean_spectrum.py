@@ -116,4 +116,3 @@ plt.show()
 # --- export spectrum 
 mean_data = np.array([mean_profile_mz, mean_profile_int]).T
 np.savetxt("mean_data.txt", mean_data, delimiter = "\t")
-help(baf2sql)
