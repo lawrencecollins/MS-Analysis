@@ -1,8 +1,0 @@
-error = 0.239974
-time = 1.788000
-iterations = 20
-uniscore = 0.959584
-mzsig = 0.000000
-zzsig = 1.000000
-beta = 0.000000
-psig = 0.000000
