@@ -103,7 +103,7 @@ mean_profile_int = np.average(np_profile_int, axis = 0)
 
 plt.figure(dpi = 120)
 # plot profile spectrum
-plt.plot(mean_profile_mz, mean_profile_int)
+plt.plot(mean_profile_mz, mean_profile_int, linewidth = 0.5, color = 'red')
 
 # # plot line spectrum
 # plt.stem(line_mz, line_int)
