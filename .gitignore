@@ -2,3 +2,4 @@ venv
 .vscode
 example_analysis.d
 mean_data_unidecfiles
+UniDec/
