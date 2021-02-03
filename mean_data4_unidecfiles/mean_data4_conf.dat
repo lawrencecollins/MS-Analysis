@@ -16,7 +16,7 @@ massub 13200
 masslb 11600
 msig 0.0
 molig 0.0
-massbins 1
+massbins 0.1
 mtabsig 0.0
 minmz 244.9952986816976
 maxmz 3005.214276390133
@@ -24,7 +24,7 @@ subbuff 100
 subtype 2
 smooth 0.0
 mzbins 0.0
-peakwindow 500.0
+peakwindow 10
 peakthresh 0.1
 peakplotthresh 0.1
 plotsep 0.025
