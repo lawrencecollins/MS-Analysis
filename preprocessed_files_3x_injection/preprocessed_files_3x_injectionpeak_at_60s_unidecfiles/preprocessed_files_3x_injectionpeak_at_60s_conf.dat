@@ -3,8 +3,8 @@ imflag 0
 input C:\Users\cm19ljc\Documents\GitHub\MS-Analysis\preprocessed_files_3x_injection\preprocessed_files_3x_injectionpeak_at_60s_unidecfiles\preprocessed_files_3x_injectionpeak_at_60s_input.dat
 output C:\Users\cm19ljc\Documents\GitHub\MS-Analysis\preprocessed_files_3x_injection\preprocessed_files_3x_injectionpeak_at_60s_unidecfiles\preprocessed_files_3x_injectionpeak_at_60s
 numit 100
-numz 20
-endz 20
+numz 50
+endz 50
 startz 1
 zzsig 1.0
 psig 1.0
@@ -12,7 +12,7 @@ beta 500.0
 mzsig 0.0
 psfun 0
 discreteplot 0
-massub 500000.0
+massub 14000.0
 masslb 5000.0
 msig 0.0
 molig 0.0
