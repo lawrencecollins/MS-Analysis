@@ -1,8 +1,8 @@
-error = 912135.000000
-time = 3.378000
-iterations = 99
-uniscore = 0.430817
-mzsig = 0.000000
+error = 2248701952.000000
+time = 1.723000
+iterations = 61
+uniscore = 0.579551
+mzsig = 0.027747
 zzsig = 1.000000
-beta = 500.000000
+beta = 0.000000
 psig = 1.000000
