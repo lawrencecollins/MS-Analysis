@@ -1,5 +1,5 @@
 error = 1704836864.000000
-time = 5.141000
+time = 4.389000
 iterations = 93
 uniscore = 0.909932
 mzsig = 0.013211
