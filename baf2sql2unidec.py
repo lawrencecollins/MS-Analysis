@@ -4,6 +4,7 @@ from ctypes import *
 import sys
 import os
 import baf2sql
+import matplotlib.pyplot as plt
 
 
 class BafSpectrum():
@@ -96,15 +97,28 @@ class BafSpectrum():
 
     def export_scans_from_file(self, path, scanstart=None, scanend=None, name = None):
 
+        self.scanstart = scanstart
+        self.scanend = scanend
         if name is None:
             directory, name = os.path.split(path)
         self.name = name
 
         self.open_baf_tic(path)
         data = self.extract_scans(scanstart=scanstart, scanend=scanend)
-
+        self.data = data
         return self.name, data
 
 
-
-
+    def plot_tic(self, rt=None, tic=None, name = None, show_scans = False):
+        if rt == None:
+            rt = self.rt
+        if tic == None:
+            tic = self.tic
+        if name == None:
+            name = self.name
+        plt.plot(rt, tic)
+        if show_scans == True:
+            plt.axvspan(rt[self.scanstart], rt[self.scanend])
+        plt.title(name)
+        plt.xlabel("Time")
+        plt.show()
