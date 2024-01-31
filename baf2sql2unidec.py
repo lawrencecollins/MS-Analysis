@@ -46,6 +46,44 @@ class BafSpectrum():
         self.bpc = [ row[2] for row in self.data ]
 
         return self.rt, self.tic, self.bpc
+    def rt_iter(self, baf_fn=None, conn = None, rt = None, scanstart = None, scanend = None):
+        if conn == None:
+            conn = self.conn
+        if baf_fn is None:
+            baf_fn = self.baf_fn
+        if rt == None:
+            rt = self.rt
+        if scanstart is not None and scanend is not None:
+            rt = rt[scanstart:scanend]
+        elif scanstart is not None:
+            rt = rt[scanstart:]
+
+        alldata = []
+        scans = []
+        for n, i in enumerate(rt):
+            q = conn.execute("SELECT LineMzId, LineIntensityId, ProfileMzId, ProfileIntensityId FROM Spectra "
+                        "WHERE ABS(Rt - {}) < 1e-8".format(i))
+            row = q.fetchone()
+
+            bs = baf2sql.BinaryStorage(baf_fn)
+
+            if not all(row) == False: # check for None values
+
+                bs = baf2sql.BinaryStorage(baf_fn)
+
+                profile_mz = np.array(bs.readArrayDouble(row[2]))
+                profile_int = np.array(bs.readArrayDouble(row[3]))
+
+                scan = np.transpose([profile_mz, profile_int])
+                alldata.append(scan)
+                scans.append(n)
+        return alldata, scans
+
+
+
+
+
+
 
     def extract_scans(self, scanstart=None, scanend=None, rt = None,
                       conn = None, baf_fn = None, mean=True):

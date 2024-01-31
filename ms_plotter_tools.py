@@ -32,6 +32,19 @@ def get_txt_files(directory):
 
     return paths
 
+def set_spectra_colors(spectra, cmap = 'rainbow', x1=0, x2=1):
+    """assign colour as class attribute in list of objects"""
+    cmap = plt.get_cmap(cmap)
+    colors = cmap(np.linspace(x1, x2, len(spectra)))
+    for i, s in enumerate(spectra):
+        s.color = colors[i]
+
+
+def get_cmap(length, cmap = 'rainbow', x1 = 0, x2 = 1):
+
+    cmap = plt.get_cmap(cmap)
+    return cmap(np.linspace(x1, x2, length))
+
 
 def atoi(text):
     return int(text) if text.isdigit() else text
@@ -55,36 +68,78 @@ def find_peaks_(x, y, threshold, distance):
     return peaksi, peaksx
 
 
-def match_peaks2(theory_df, data_masses, window = 10):
-    species, expected = np.array(theory_df['Species']), np.array(theory_df['Mass'])
+def _spectrum_plotter(x,y, title = None, axs = None, fig = None,
+                     xlabel = None, window = [None, None], *args, **kwargs):
+
+    if axs is None:
+        axs = plt.gca()
+    if fig is None and axs is None:
+        fig, axs = plt.subplots(subplot_dict)
+
+
+    out = axs.plot(x, y, *args, **kwargs)
+    axs.set_title(title)
+    axs.spines['right'].set_visible(False)
+    axs.spines['top'].set_visible(False)
+    axs.spines['left'].set_visible(False)
+    axs.yaxis.set_tick_params(labelleft=False)
+    axs.set_yticks([])
+    axs.set_xlim(window[0], window[1])
+    axs.grid(False)
+    axs.set_xlabel(xlabel, weight = "bold")
+
+    if peaks is not None:
+        axs.scatter(peaks[:, 0], peaks[:, 1], color = colors)
+
+    return out
+
+def export_spectrum(fig, name):
+    figpath= os.path.join(eng.directory, "UniDec_Figures_and_Files", name+"_img.png")
+
+    plt.savefig(figpath)
+    print("Fig exported to: ", figpath)
+
+def plot_peaks(peaks, axs = None, show_all = False, label = True):
+
+    if axs is None:
+        axs = plt.gca()
+
+
+    for p in peaks:
+        if show_all:
+            axs.scatter(p.mass, p.height, color = p.color, marker=p.marker)
+        elif show_all is False:
+            if p.label != "":
+                axs.scatter(p.mass, p.height, color = p.color, marker=p.marker)
+        if label:
+            axs.text(p.mass, p.height, p.label, color = p.color, rotation = 0, ha = "center", va = 'bottom',
+                    fontsize = 'small', style = 'italic')
 
 
 
-    # match algorithm
-    tm, dm = np.meshgrid(expected, data_masses)
-    if len(expected) ==1 or len(data_masses) == 1:
-        tm, dm = tm[0], dm[0]
-    diff = abs(tm - dm)
-    diff[diff>window] = np.nan
-    pmatch = {}
-    for i, d in enumerate(diff):
-        if np.isnan(d).all()==False:
-            minimum = np.nanargmin(d)
-            data_peak = data_masses[i]
-
-            pmatch[data_peak] = species[minimum]
-    return pmatch
-
-
-def plot_spectra(files, window = None, threshold = 0.02, distance,*args, **kwargs):
-    if type(files) !=list:
-        files = [files]
+def plot_spectra_separate(spectra, attr = 'massdat', xlabel = 'Mass [Da]',
+                          export = True, window = [None, None], show_peaks = False, show_all_peaks = False,
+                          label_peaks=True,
+                          *args, **kwargs):
+    """Spectra plotted on individual figure"""
 
 
 
+    if type(spectra) != list:
+        spectra = [spectra]
+
+    for i, s in enumerate(spectra):
+        fig,axs = plt.subplots()
+
+        x, y = getattr(s, attr)[:, 0], getattr(s, attr)[:, 1]
+
+        _spectrum_plotter(x, y, xlabel=xlabel, axs = axs, fig=fig,title = s.name, window = window, *args, **kwargs)
+        if show_peaks:
+            plot_peaks(s.pks.peaks, axs = axs, show_all = show_all_peaks, label = label_peaks)
+        if export:
+            export_spectrum(fig, s.name+"_"+attr)
 
 
 
-
-
-
+def plot_spectra_combined(spectra, attr = 'massdat', title = "", show_titles = True):
+    pass
