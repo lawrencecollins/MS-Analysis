@@ -16,6 +16,7 @@ def match(pks, masslist, names, tolerance):
     peaks = []
     nameslist = []
 
+
     for p in pks:
 
         target = p.mass
@@ -55,14 +56,71 @@ def unzip_from_dir(directory):
             print("Unzipped {}".format(file))
         os.remove(path)
 
-
+def filter_df(df, filter_by, column):
+    flt=df[column].str.contains(filter_by)
+    return df[flt]
 
 class Meta2():
     def __init__(self):
         self.spectra = []
         self.eng = MetaUniDec()
+        self.species = None
+        self.tolerance = 10
 
-    def upload_spectra(self, directory, scanstart = None, scanend = None, filetype= '.baf',
+
+
+    def load_input_file(self, path):
+        self.params=pd.read_excel("Meta2_input_file_v3.xlsx", sheet_name=0)
+
+        try:
+            self.conditions = pd.read_excel("Meta2_input_file_v3.xlsx", sheet_name=1)
+        except Exception as e:
+            print(e, "no conditions?")
+        try:
+            self.get_directory()
+            self.upload_spectra()
+            self.load_hdf5()
+            self.to_unidec()
+            self.update_config()
+            self.get_species()
+        except Exception as e:
+            print(e)
+
+
+    def update_config(self, config_table = None):
+
+        self.default_config()
+        if config_table is None:
+            config_table = filter_df(self.params, 'Config', 'Parameter')
+
+        for i, row in config_table.iterrows():
+            print(row[0], row[1])
+            if row[1] is not np.nan:
+                setattr(self.eng.config, row[0], row[1])
+                print(getattr(self.eng.config, row[0]))
+
+        self.eng.config.write_hdf5()
+        return config_table
+
+    def get_species(self, param_table=None):
+        if param_table is None:
+            param_table=self.params
+
+        seqs = filter_df(param_table, 'Species', 'Parameter')
+        seqs.loc[:, 'Parameter']=seqs.loc[:, 'Parameter'].str.replace("Species ", "")
+        self.species=seqs.rename(columns={"Parameter":"Species", "Input":"Mass"})
+
+        return self.species
+
+    def get_directory(self, param_table=None):
+        if param_table is None:
+            param_table=self.params
+        dr=filter_df(param_table, 'Directory', 'Parameter')
+        self.directory=dr.iloc[0, 1]
+
+        return self.directory
+
+    def upload_spectra(self, directory = None, scanstart = None, scanend = None, filetype= '.baf',
                        plot = False, show_scans=False):
         """_summary_
 
@@ -72,7 +130,10 @@ class Meta2():
             scanend (_type_, optional): _description_. Defaults to None.
             filetype (str, optional): _description_. Defaults to 'baf'.
         """
-        self.directory = directory
+        if directory is None:
+            directory = self.directory
+        else:
+            self.directory = directory
 
         if filetype == '.baf' or filetype ==".d":
 
@@ -92,7 +153,7 @@ class Meta2():
 
         return self.spectra
 
-    def load_hdf5(self, directory, hdf5_name = None, clear = False,
+    def load_hdf5(self, directory=None, hdf5_name = None, clear = False,
                      ):
         """Generates hdf5 either using name of directory or defined hdf5_name.
             If hdf5 already exists either deletes or directly uploads to UniDec.
@@ -128,7 +189,7 @@ class Meta2():
             self.eng.data.add_data(s.data2, name = s.name, export=False)
         self.eng.data.export_hdf5()
 
-    def update_config(self, massub = 20000, masslb = 10000, minmz = 600,
+    def default_config(self, massub = 20000, masslb = 10000, minmz = 600,
                       numit = 50, peakwindow = 10, peaknorm = 0,
                       peakplotthresh = 0.1, peakthresh = 0.01,
                       datanorm = 0, startz = 1, endz = 100, numz = 100):
@@ -197,7 +258,7 @@ class Meta2():
         # update hdf5
         self.eng.config.write_hdf5()
 
-    def on_unidec(self, hdf5_path = None):
+    def on_unidec(self, hdf5_path = None, export_data=True, background_threshold = True, match = True):
 
 
         if hdf5_path is None:
@@ -210,6 +271,16 @@ class Meta2():
             self.eng.pick_peaks()
         except Exception as error:
             print(error)
+
+        if self.species is not None and match:
+            try:
+                masslist = list(self.species['Mass'])
+                names = list(self.species['Species'])
+                self.match_spectra(masslist, names, self.tolerance, background=background_threshold)
+                self.export_data()
+            except Exception as e:
+                print(e)
+
 
     def background_threshold(self, spectrum, binsize = 10):
 
@@ -296,7 +367,7 @@ class Meta2():
         for s in self.eng.data.spectra:
 
         # export massdat to unidec folder
-            arraypath = os.path.join(   self.directory, "UniDec_Figures_and_Files", s.name+"_massdat.txt")
+            arraypath = os.path.join(self.directory, "UniDec_Figures_and_Files", s.name+"_massdat.txt")
             np.savetxt(arraypath, s.massdat)
             # export figs to unidec folder
             # msp.plot_spectra()
@@ -305,22 +376,24 @@ class Meta2():
             label = []
             mass = []
             height = []
+            color = []
             for p in s.pks.peaks:
 
                 if p.label !="" :
                     label.append(p.label)
                     mass.append(p.mass)
                     height.append(p.height)
+                    color.append(p.color)
                     counter = counter+1
             s_name = [s.name]*counter
 
-            dct = {"Label":label, "Mass":mass, "Height":height, "Name":s_name}
+            dct = {"Label":label, "Mass":mass, "Height":height, "Name":s_name, "Color":color}
             df = pd.DataFrame(dct)
             df['Percentage_Labelling'] = (df.Height/df.Height.sum())*100
             dfs.append(df)
         results_df = pd.concat(dfs)
 
-
+        self.results1 = results_df
 
         results2 = pd.pivot(results_df, index='Name', columns='Label', values = ['Height', 'Percentage_Labelling']).fillna(0)
         results2.reset_index(inplace=True)
@@ -338,8 +411,16 @@ class Meta2():
         return results2
 
 
-    def plot_spectra(self, export = True, combine = False, show = True):
-        pass
+
+
+
+    def plot_spectra(self, export = True, combine = False, show = True, data = 'massdat', window = [None, None],
+                     ):
+
+        if combine:
+            pass
+        else:
+            msp.plot_spectra_separate(export=export, attr=data, window=window,  )
 
 
 

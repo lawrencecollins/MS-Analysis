@@ -69,7 +69,9 @@ def find_peaks_(x, y, threshold, distance):
 
 
 def _spectrum_plotter(x,y, title = None, axs = None, fig = None,
-                     xlabel = None, window = [None, None], *args, **kwargs):
+                     xlabel = None, window = [None, None],
+                     show_title = False, *args, **kwargs):
+
 
     if axs is None:
         axs = plt.gca()
@@ -78,7 +80,8 @@ def _spectrum_plotter(x,y, title = None, axs = None, fig = None,
 
 
     out = axs.plot(x, y, *args, **kwargs)
-    axs.set_title(title)
+    if show_title:
+        axs.set_title(title)
     axs.spines['right'].set_visible(False)
     axs.spines['top'].set_visible(False)
     axs.spines['left'].set_visible(False)
@@ -88,18 +91,18 @@ def _spectrum_plotter(x,y, title = None, axs = None, fig = None,
     axs.grid(False)
     axs.set_xlabel(xlabel, weight = "bold")
 
-    if peaks is not None:
-        axs.scatter(peaks[:, 0], peaks[:, 1], color = colors)
+
 
     return out
 
-def export_spectrum(fig, name):
-    figpath= os.path.join(eng.directory, "UniDec_Figures_and_Files", name+"_img.png")
+def export_figure(fig, name, directory):
+    figpath= os.path.join(directory, "UniDec_Figures_and_Files", name+"_img.png")
 
-    plt.savefig(figpath)
+    plt.savefig(figpath,bbox_inches='tight')
+
     print("Fig exported to: ", figpath)
 
-def plot_peaks(peaks, axs = None, show_all = False, label = True):
+def plot_peaks(peaks, axs = None, show_all = False, label = True, legend=True):
 
     if axs is None:
         axs = plt.gca()
@@ -114,12 +117,20 @@ def plot_peaks(peaks, axs = None, show_all = False, label = True):
         if label:
             axs.text(p.mass, p.height, p.label, color = p.color, rotation = 0, ha = "center", va = 'bottom',
                     fontsize = 'small', style = 'italic')
+    if legend:
+        labels  = [str(p.label)+" "+str(p.mass)+" Da" for p in peaks if p.label!= "" ]
+        nl = '\n'
+        # text = f"Species: {nl}{nl.join(labels)}"
+        text = f"{nl.join(labels)}"
+        bbox = dict(boxstyle='round', fc='lavender', ec='teal', alpha=0.5)
+        axs.text(1, 0.8, text, fontsize=9, bbox=bbox,
+                transform=axs.transAxes, horizontalalignment='left')
 
 
 
 def plot_spectra_separate(spectra, attr = 'massdat', xlabel = 'Mass [Da]',
                           export = True, window = [None, None], show_peaks = False, show_all_peaks = False,
-                          label_peaks=True,
+                          label_peaks=True, legend = False, directory = "", show_titles = True,
                           *args, **kwargs):
     """Spectra plotted on individual figure"""
 
@@ -133,13 +144,66 @@ def plot_spectra_separate(spectra, attr = 'massdat', xlabel = 'Mass [Da]',
 
         x, y = getattr(s, attr)[:, 0], getattr(s, attr)[:, 1]
 
-        _spectrum_plotter(x, y, xlabel=xlabel, axs = axs, fig=fig,title = s.name, window = window, *args, **kwargs)
+        _spectrum_plotter(x, y, xlabel=xlabel, axs = axs, fig=fig,title = s.name,
+                          window = window, show_title=show_titles,*args, **kwargs)
         if show_peaks:
-            plot_peaks(s.pks.peaks, axs = axs, show_all = show_all_peaks, label = label_peaks)
+            plot_peaks(s.pks.peaks, axs = axs, show_all = show_all_peaks, label = label_peaks, legend = legend)
+        fig.tight_layout()
         if export:
-            export_spectrum(fig, s.name+"_"+attr)
+            export_figure(fig, s.name+"_"+attr, directory)
 
 
 
-def plot_spectra_combined(spectra, attr = 'massdat', title = "", show_titles = True):
-    pass
+def plot_spectra_combined(spectra, attr = 'massdat', title = "", show_titles = True,
+                          cmap='viridis', show_peaks = True,window = [None, None],
+                          xlabel="Mass [Da]", show_all_peaks=False,label_peaks=True, legend=True,
+                          fade=True,xoffval = 7.5, yoffval = 20,export=True,directory="",
+                          *args, **kwargs):
+
+    if fade:
+        alpha = np.linspace(1, 0.6, len(spectra))
+    else:
+        alpha = np.linspace(1, 1, len(spectra))
+    # gray_cmap = get_cmap(len(spectra), cmap = "gray", x1 = 0, x2 = 0.7)
+    set_spectra_colors(spectra, cmap =cmap, x1 = 0, x2 = 0.7)
+
+    fig = plt.figure()
+
+    fig.suptitle(title, weight = 'bold')
+    for i,s in enumerate(spectra):
+        xoff = i/xoffval
+        yoff= i/yoffval +0.05
+        x, y = getattr(s, attr)[:, 0], getattr(s, attr)[:, 1]
+        axs=fig.add_axes([xoff,yoff,0.65,0.65], zorder=-i)
+
+        _spectrum_plotter(x, y, xlabel=xlabel, axs = axs, fig=fig,
+                          window = window, c=s.color,*args, **kwargs)
+        if show_peaks :
+            plot_peaks(s.pks.peaks, axs = axs, show_all = show_all_peaks, label = label_peaks, legend = False)
+        if show_titles:
+            axs.set_title(s.name, alpha = alpha[i], backgroundcolor = 'white')
+        if i != 0:
+            axs.spines['bottom'].set_visible(False)
+            axs.xaxis.set_tick_params(labelleft=False)
+            axs.set_xticks([])
+            axs.set_xlabel("")
+        if show_peaks and i == len(spectra)-1:
+            plot_peaks(s.pks.peaks, axs = axs, show_all = show_all_peaks, label = label_peaks, legend = legend)
+
+        axs.patch.set_alpha(0)
+    # fig.tight_layout()
+    if export:
+        if title == "":
+            title = os.path.split(directory)[-1]
+        export_figure(fig, title, directory)
+
+def file_to_df(path):
+    extension = os.path.splitext(path)[1]
+    if extension == ".csv":
+        df = pd.read_csv(path)
+    elif extension == ".xlsx" or extension == ".xls":
+        df = pd.read_excel(path)
+    else:
+        print('Extension Not Recognized', extension)
+        df = None
+    return df
