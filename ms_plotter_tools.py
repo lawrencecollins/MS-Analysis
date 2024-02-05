@@ -151,6 +151,7 @@ def plot_spectra_separate(spectra, attr = 'massdat', xlabel = 'Mass [Da]',
         fig.tight_layout()
         if export:
             export_figure(fig, s.name+"_"+attr, directory)
+        plt.close(fig)
 
 
 

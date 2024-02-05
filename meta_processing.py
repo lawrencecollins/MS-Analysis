@@ -69,38 +69,52 @@ class Meta2():
 
 
 
-    def load_input_file(self, path):
+    def load_input_file(self, path, unzip = True, getscans=True, clearhdf5=True):
         self.params=pd.read_excel("Meta2_input_file_v3.xlsx", sheet_name=0)
 
         try:
             self.conditions = pd.read_excel("Meta2_input_file_v3.xlsx", sheet_name=1)
         except Exception as e:
             print(e, "no conditions?")
-        try:
-            self.get_directory()
-            self.upload_spectra()
-            self.load_hdf5()
-            self.to_unidec()
-            self.update_config()
-            self.get_species()
-        except Exception as e:
-            print(e)
+        # try:
+        self.get_directory()
+        if unzip:
+            unzip_from_dir(self.directory)
+
+        if getscans:
+            scanstart, scanend = self.get_scans()
+        self.upload_spectra(scanstart=scanstart, scanend=scanend)
+        self.load_hdf5(clear=clearhdf5)
+        self.to_unidec()
+        self.update_config()
+        self.get_species()
+        # except Exception as e:
+            # print(e)
 
 
     def update_config(self, config_table = None):
-
+        self.eng.open(self.hdf5_path)
         self.default_config()
         if config_table is None:
             config_table = filter_df(self.params, 'Config', 'Parameter')
-
+            config_table.loc[:, 'Parameter'] = config_table.loc[:, 'Parameter'].str.replace("Config ", "")
         for i, row in config_table.iterrows():
             print(row[0], row[1])
             if row[1] is not np.nan:
-                setattr(self.eng.config, row[0], row[1])
-                print(getattr(self.eng.config, row[0]))
+                setattr(self.eng.config, row[0], float(row[1]))
+                # print(getattr(self.eng.config, row[0]))
+
 
         self.eng.config.write_hdf5()
         return config_table
+
+    def get_scans(self):
+        self.scanstart = filter_df(self.params, 'Start Scan', 'Parameter').iloc[0, 1]
+        self.scanend = filter_df(self.params, 'End Scan', 'Parameter').iloc[0, 1]
+        return self.scanstart, self.scanend
+
+    def get_times(self):
+        pass
 
     def get_species(self, param_table=None):
         if param_table is None:
