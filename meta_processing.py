@@ -60,20 +60,32 @@ def filter_df(df, filter_by, column):
     flt=df[column].str.contains(filter_by)
     return df[flt]
 
+def df_partial_str_merge(df1, df2, on):
+    r = '({})'.format('|'.join(df2.Name))
+    merge_df = df1.Name.str.extract(r, expand=False).fillna(df1.Name)
+    df2=df2.merge(df1.drop('Name', axis=1), left_on='Name', right_on=merge_df, how='outer')
+    return df2
+
+
+
 class Meta2():
     def __init__(self):
         self.spectra = []
         self.eng = MetaUniDec()
         self.species = None
         self.tolerance = 10
+        self.var_ids=False
+        self.colors_dict=None
 
 
-
-    def load_input_file(self, path, unzip = True, getscans=True, clearhdf5=True):
-        self.params=pd.read_excel("Meta2_input_file_v3.xlsx", sheet_name=0)
+    def load_input_file(self, path, unzip = True, getscans=True, clearhdf5=True,
+                        var_ids = False):
+        self.params=pd.read_excel(path, sheet_name=0)
 
         try:
-            self.conditions = pd.read_excel("Meta2_input_file_v3.xlsx", sheet_name=1)
+            self.conditions = pd.read_excel(path, sheet_name=0)
+            if var_ids:
+                self.var_ids = pd.read_excel(path, sheet_name=1)
         except Exception as e:
             print(e, "no conditions?")
         # try:
@@ -88,8 +100,10 @@ class Meta2():
         self.to_unidec()
         self.update_config()
         self.get_species()
-        # except Exception as e:
-            # print(e)
+        try:
+            self.get_colors()
+        except Exception as e:
+            print(e)
 
 
     def update_config(self, config_table = None):
@@ -125,6 +139,19 @@ class Meta2():
         self.species=seqs.rename(columns={"Parameter":"Species", "Input":"Mass"})
 
         return self.species
+
+    def get_colors(self):
+        param_table = self.params
+        seqs = filter_df(param_table, 'Color', 'Parameter')
+        seqs.loc[:, 'Parameter']=seqs.loc[:, 'Parameter'].str.replace("Color ", "")
+        self.colors_df=seqs.rename(columns={"Parameter":"Species", "Input":"Color"})
+        self.colors_df.drop('Comments',axis=1,inplace=True)
+        self.colors_dict = pd.Series(self.colors_df.Color.values,index=self.colors_df.Species.values, ).to_dict()
+        try:
+            self.species = self.species.merge(self.colors_df, on='Species', how='outer')
+            self.species = self.species[['Species', 'Mass', 'Color']].dropna(subset=['Mass'])
+        except Exception as e:
+            print(e)
 
     def get_directory(self, param_table=None):
         if param_table is None:
@@ -294,6 +321,10 @@ class Meta2():
                 self.export_data()
             except Exception as e:
                 print(e)
+        # masslist = list(self.species['Mass'])
+        # names = list(self.species['Species'])
+        # self.match_spectra(masslist, names, self.tolerance, background=background_threshold)
+        # self.export_data()
 
 
     def background_threshold(self, spectrum, binsize = 10):
@@ -356,6 +387,10 @@ class Meta2():
             p.match = match
             p.matcherror = error
 
+            if self.colors_dict is not None:
+                if p.label in self.colors_dict.keys():
+                    p.color = self.colors_dict[p.label]
+
             matches.append(match)
             errors.append(error)
             peaks.append(target)
@@ -412,9 +447,7 @@ class Meta2():
         results2 = pd.pivot(results_df, index='Name', columns='Label', values = ['Height', 'Percentage_Labelling']).fillna(0)
         results2.reset_index(inplace=True)
 
-        if conditions_input != "":
-            conditions_input_df = pd.read_excel(os.path.join(self.directory, "Conditions_input.xlsx"))
-            results2 = conditions_input_df.merge(results2, how='left', on="Name")
+
 
         if name is None:
             name = os.path.split(self.directory)[1]+"_results.xlsx"
@@ -428,13 +461,22 @@ class Meta2():
 
 
 
-    def plot_spectra(self, export = True, combine = False, show = True, data = 'massdat', window = [None, None],
+    def plot_spectra(self, export = True, combine = False, data = 'massdat',
+                    window = [None, None], cmap='gray',title=None,show_titles=False,
+                    show_peaks=False, xlabel='Mass [Da]',c='black',
+                    lw=0.7
                      ):
-
+        spectra = self.eng.data.spectra
         if combine:
-            pass
+            if title is None:
+                title = os.path.split(self.directory)[-1]
+            msp.plot_spectra_combined(spectra, directory = self.directory,
+                                      cmap=cmap,title=title,show_titles=show_titles,
+                                      show_peaks=show_peaks, window=window)
         else:
-            msp.plot_spectra_separate(export=export, attr=data, window=window,  )
+            msp.plot_spectra_separate(spectra, directory=self.directory, export=export, attr=data, window=window, xlabel=xlabel,
+                                      c=c, lw=lw
+                                       )
 
 
 

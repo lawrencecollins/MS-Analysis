@@ -8,6 +8,8 @@ import matplotlib
 import re
 
 matplotlib.rcParams['font.family'] = 'serif'
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
 
 
 def ascii_to_txt(directory):
@@ -95,10 +97,10 @@ def _spectrum_plotter(x,y, title = None, axs = None, fig = None,
 
     return out
 
-def export_figure(fig, name, directory):
-    figpath= os.path.join(directory, "UniDec_Figures_and_Files", name+"_img.png")
+def export_figure(fig, name, directory, fmt='svg'):
+    figpath= os.path.join(directory, "UniDec_Figures_and_Files", name+"_img.svg")
 
-    plt.savefig(figpath,bbox_inches='tight')
+    plt.savefig(figpath,bbox_inches='tight',format=fmt)
 
     print("Fig exported to: ", figpath)
 
@@ -130,7 +132,7 @@ def plot_peaks(peaks, axs = None, show_all = False, label = True, legend=True):
 
 def plot_spectra_separate(spectra, attr = 'massdat', xlabel = 'Mass [Da]',
                           export = True, window = [None, None], show_peaks = False, show_all_peaks = False,
-                          label_peaks=True, legend = False, directory = "", show_titles = True,
+                          label_peaks=True, legend = False, directory = "", show_titles = True,fmt='svg',
                           *args, **kwargs):
     """Spectra plotted on individual figure"""
 
@@ -149,8 +151,14 @@ def plot_spectra_separate(spectra, attr = 'massdat', xlabel = 'Mass [Da]',
         if show_peaks:
             plot_peaks(s.pks.peaks, axs = axs, show_all = show_all_peaks, label = label_peaks, legend = legend)
         fig.tight_layout()
+
+        window_name = ""
+        if window[0] is not None:
+            window_name = window_name + "_" +str(window[0])
+        if window[1] is not None:
+            window_name = window_name+"_"+str(window[1])
         if export:
-            export_figure(fig, s.name+"_"+attr, directory)
+            export_figure(fig, s.name+"_"+attr+window_name, directory, fmt=fmt)
         plt.close(fig)
 
 
@@ -158,7 +166,7 @@ def plot_spectra_separate(spectra, attr = 'massdat', xlabel = 'Mass [Da]',
 def plot_spectra_combined(spectra, attr = 'massdat', title = "", show_titles = True,
                           cmap='viridis', show_peaks = True,window = [None, None],
                           xlabel="Mass [Da]", show_all_peaks=False,label_peaks=True, legend=True,
-                          fade=True,xoffval = 7.5, yoffval = 20,export=True,directory="",
+                          fade=True,xoffval = 7.5, yoffval = 20,export=True,directory="",fmt='svg',
                           *args, **kwargs):
 
     if fade:
@@ -196,7 +204,15 @@ def plot_spectra_combined(spectra, attr = 'massdat', title = "", show_titles = T
     if export:
         if title == "":
             title = os.path.split(directory)[-1]
-        export_figure(fig, title, directory)
+
+
+        window_name = ""
+        if window[0] is not None:
+            window_name = window_name + "_" +str(window[0])
+        if window[1] is not None:
+            window_name = window_name+"_"+str(window[1])
+        title = title+window_name
+        export_figure(fig, title, directory, fmt=fmt)
 
 def file_to_df(path):
     extension = os.path.splitext(path)[1]
