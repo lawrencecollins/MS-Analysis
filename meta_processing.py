@@ -74,7 +74,7 @@ class Meta2():
         self.eng = MetaUniDec()
         self.species = None
         self.tolerance = 10
-        self.var_ids=False
+        self.vars=False
         self.colors_dict=None
 
 
@@ -86,6 +86,7 @@ class Meta2():
             self.conditions = pd.read_excel(path, sheet_name=0)
             if var_ids:
                 self.var_ids = pd.read_excel(path, sheet_name=1)
+                self.vars = True
         except Exception as e:
             print(e, "no conditions?")
         # try:
@@ -411,6 +412,26 @@ class Meta2():
             self.match(s.pks.peaks, masslist, names, tolerance,
                         background_threshold = s.background_threshold)
 
+
+
+    def group_spectra(self, groupby):
+        df1 = pd.DataFrame([s.name for s in self.eng.data.spectra], columns=['Name'])
+        df2 = self.var_ids
+
+        r = '({})'.format('|'.join(df2.Name))
+        merge_df = df1.Name.str.extract(r, expand=False).fillna(df1.Name)
+        merge_df
+        df2=df2.merge(df1, left_on='Name', right_on=merge_df, how='outer')
+
+        grouped = {}
+        for n, d in df2.groupby(groupby):
+            grouped[n] = [s for s in self.eng.data.spectra if s.name in list(d.Name_y)]
+
+
+
+        return grouped
+
+
     def export_data(self, export = True, conditions_input = "", name = None):
         dfs = []
         for s in self.eng.data.spectra:
@@ -442,6 +463,12 @@ class Meta2():
             dfs.append(df)
         results_df = pd.concat(dfs)
 
+        if self.vars:
+            try:
+                results_df = df_partial_str_merge(results_df,self.var_ids,'Name')
+            except Exception as e:
+                print("check vars", e)
+
         self.results1 = results_df
 
         results2 = pd.pivot(results_df, index='Name', columns='Label', values = ['Height', 'Percentage_Labelling']).fillna(0)
@@ -464,13 +491,22 @@ class Meta2():
     def plot_spectra(self, export = True, combine = False, data = 'massdat',
                     window = [None, None], cmap='gray',title=None,show_titles=False,
                     show_peaks=False, xlabel='Mass [Da]',c='black',
-                    lw=0.7
+                    lw=0.7,groupby=None
                      ):
         spectra = self.eng.data.spectra
-        if combine:
+        if combine and groupby is None:
             if title is None:
                 title = os.path.split(self.directory)[-1]
             msp.plot_spectra_combined(spectra, directory = self.directory,
+                                      cmap=cmap,title=title,show_titles=show_titles,
+                                      show_peaks=show_peaks, window=window)
+        elif combine and groupby is not None:
+            if type(groupby) != list:
+                groupby = [groupby]
+            grouped = self.group_spectra(groupby)
+            for var, spectra in grouped.items():
+                title = " ,".join([name + " " + str(v) for name, v in zip(groupby, var)])
+                msp.plot_spectra_combined(spectra, directory = self.directory,
                                       cmap=cmap,title=title,show_titles=show_titles,
                                       show_peaks=show_peaks, window=window)
         else:

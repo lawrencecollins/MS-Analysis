@@ -98,7 +98,8 @@ def _spectrum_plotter(x,y, title = None, axs = None, fig = None,
     return out
 
 def export_figure(fig, name, directory, fmt='svg'):
-    figpath= os.path.join(directory, "UniDec_Figures_and_Files", name+"_img.svg")
+    figpath= os.path.join(directory, "UniDec_Figures_and_Files", name+"_img"+"."+fmt)
+
 
     plt.savefig(figpath,bbox_inches='tight',format=fmt)
 
