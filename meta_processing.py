@@ -54,7 +54,7 @@ def unzip_from_dir(directory):
             with zipfile.ZipFile(path,"r") as zip_ref:
                 zip_ref.extractall(directory)
             print("Unzipped {}".format(file))
-        os.remove(path)
+        # os.remove(path)
 
 def filter_df(df, filter_by, column):
     flt=df[column].str.contains(filter_by)
